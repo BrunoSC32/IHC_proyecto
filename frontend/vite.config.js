@@ -55,6 +55,8 @@ export default defineConfig({
   // Agrega esta sección para definir el servidor de desarrollo
   server: {
     host: 'localhost',
+        host: true,
+
     port: 3000,
     strictPort: true, // falla si el puerto está ocupado
     open: true, // abre el navegador automáticamente

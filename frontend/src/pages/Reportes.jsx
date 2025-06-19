@@ -1,292 +1,443 @@
 import { useState } from 'react';
-import { Printer, Download, Calendar, BarChart2, PieChart, FileText, ShoppingCart, Package } from 'lucide-react';
+import { 
+  FileText, BarChart2, Calendar, Printer, Download, 
+  Filter, ChevronDown, ChevronUp, Package, Users, DollarSign, 
+  AlertCircle, List 
+} from 'lucide-react';
 import { TopBar, NavBar, Footer, FarmaButton } from './Components';
 
+// Tipos de reportes con íconos y colores
+const REPORT_TYPES = [
+  { id: 'all', name: 'Todos', icon: <FileText />, color: 'gray' },
+  { id: 'sales', name: 'Ventas', icon: <BarChart2 />, color: 'blue' },
+  { id: 'inventory', name: 'Inventario', icon: <Package />, color: 'green' },
+  { id: 'customers', name: 'Clientes', icon: <Users />, color: 'purple' },
+  { id: 'financial', name: 'Financieros', icon: <DollarSign />, color: 'yellow' },
+  { id: 'alerts', name: 'Alertas', icon: <AlertCircle />, color: 'red' }
+];
+
+// Datos de ejemplo para reportes
+const REPORTS_DATA = [
+  {
+    id: 1,
+    name: 'Reporte de Ventas Diarias',
+    type: 'sales',
+    category: 'Detallado',
+    period: '2024-05-01 a 2024-05-31',
+    size: '2.5 MB',
+    format: 'PDF',
+    date: '2024-05-31T18:30:00'
+  },
+  {
+    id: 2,
+    name: 'Inventario Actual',
+    type: 'inventory',
+    category: 'Resumen',
+    period: 'Al 2024-05-31',
+    size: '1.8 MB',
+    format: 'Excel',
+    date: '2024-05-31T09:15:00'
+  },
+  {
+    id: 3,
+    name: 'Top 10 Productos',
+    type: 'sales',
+    category: 'Gráfico',
+    period: '2024-01-01 a 2024-05-31',
+    size: '3.2 MB',
+    format: 'PDF',
+    date: '2024-05-30T14:45:00'
+  }
+];
+
 export default function Reportes() {
-  const [reportType, setReportType] = useState('ventas');
-  const [dateRange, setDateRange] = useState({
-    start: '',
-    end: ''
+  const [reports] = useState(REPORTS_DATA);
+  const [selectedType, setSelectedType] = useState('all');
+  const [filters, setFilters] = useState({
+    category: 'Todos',
+    format: 'Todos',
+    dateFrom: '',
+    dateTo: '',
+    searchTerm: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedReport, setSelectedReport] = useState(null);
+
+  // Filtrar reportes
+  const filteredReports = reports.filter(report => {
+    const matchesType = selectedType === 'all' || report.type === selectedType;
+    const matchesCategory = filters.category === 'Todos' || report.category === filters.category;
+    const matchesFormat = filters.format === 'Todos' || report.format === filters.format;
+    const matchesSearch = filters.searchTerm === '' || 
+      report.name.toLowerCase().includes(filters.searchTerm.toLowerCase());
+    
+    // Filtrado por fecha
+    let matchesDate = true;
+    if (filters.dateFrom && new Date(report.date) < new Date(filters.dateFrom)) {
+      matchesDate = false;
+    }
+    if (filters.dateTo && new Date(report.date) > new Date(filters.dateTo)) {
+      matchesDate = false;
+    }
+    
+    return matchesType && matchesCategory && matchesFormat && matchesSearch && matchesDate;
   });
 
-  // Datos de ejemplo para reportes
-  const reportData = {
-    ventas: [
-      { fecha: '2023-06-01', cantidad: 45, total: 1250.75 },
-      { fecha: '2023-06-02', cantidad: 38, total: 980.50 },
-      { fecha: '2023-06-03', cantidad: 52, total: 1420.25 },
-      { fecha: '2023-06-04', cantidad: 29, total: 790.80 },
-      { fecha: '2023-06-05', cantidad: 63, total: 1750.40 },
-      { fecha: '2023-06-06', cantidad: 47, total: 1320.60 },
-      { fecha: '2023-06-07', cantidad: 41, total: 1150.30 }
-    ],
-    inventario: [
-      { producto: 'Paracetamol 500mg', stock: 150, vendidos: 85, categoria: 'Analgésico' },
-      { producto: 'Ibuprofeno 400mg', stock: 63, vendidos: 120, categoria: 'Antiinflamatorio' },
-      { producto: 'Amoxicilina 500mg', stock: 42, vendidos: 78, categoria: 'Antibiótico' },
-      { producto: 'Omeprazol 20mg', stock: 0, vendidos: 95, categoria: 'Antiácido' },
-      { producto: 'Loratadina 10mg', stock: 87, vendidos: 65, categoria: 'Antihistamínico' }
-    ],
-    clientes: [
-      { nombre: 'Juan Pérez', compras: 12, total: 845.50, ultimaCompra: '2023-06-05' },
-      { nombre: 'María González', compras: 8, total: 620.75, ultimaCompra: '2023-06-03' },
-      { nombre: 'Carlos Rodríguez', compras: 5, total: 320.40, ultimaCompra: '2023-05-28' },
-      { nombre: 'Ana Martínez', compras: 3, total: 185.90, ultimaCompra: '2023-05-20' },
-      { nombre: 'Pedro Sánchez', compras: 7, total: 510.60, ultimaCompra: '2023-06-02' }
-    ]
-  };
-
-  const handleDateChange = (e) => {
+  // Manejar cambio de filtros
+  const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setDateRange(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePrintReport = () => {
-    // Lógica para imprimir reporte
-    alert(`Generando reporte de ${reportType} del ${dateRange.start} al ${dateRange.end}`);
+  // Limpiar filtros
+  const clearFilters = () => {
+    setFilters({
+      category: 'Todos',
+      format: 'Todos',
+      dateFrom: '',
+      dateTo: '',
+      searchTerm: ''
+    });
   };
 
-  const handleExportReport = () => {
-    // Lógica para exportar reporte
-    alert(`Exportando reporte de ${reportType} como PDF`);
+  // Obtener color para tipos
+  const getColorClass = (type) => {
+    const colorMap = {
+      sales: 'blue',
+      inventory: 'green',
+      customers: 'purple',
+      financial: 'yellow',
+      alerts: 'red'
+    };
+    return colorMap[type] || 'gray';
   };
 
-  const renderReportContent = () => {
-    switch(reportType) {
-      case 'ventas':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <BarChart2 className="h-5 w-5 mr-2 text-blue-600" />
-                Tendencia de Ventas Diarias
-              </h3>
-              <div className="h-64 bg-gray-50 rounded flex items-center justify-center">
-                <p className="text-gray-500">Gráfico de ventas por día</p>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total (Bs.)</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {reportData.ventas.map((item, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(item.fecha).toLocaleDateString('es-ES')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.cantidad}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
-                        {item.total.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      case 'inventario':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <PieChart className="h-5 w-5 mr-2 text-blue-600" />
-                Distribución de Productos por Categoría
-              </h3>
-              <div className="h-64 bg-gray-50 rounded flex items-center justify-center">
-                <p className="text-gray-500">Gráfico circular por categorías</p>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Actual</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendidos (30 días)</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {reportData.inventario.map((item, index) => (
-                    <tr key={index} className={item.stock === 0 ? 'bg-red-50' : item.stock < 20 ? 'bg-yellow-50' : ''}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.producto}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.categoria}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.stock} unidades
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.vendidos} unidades
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      case 'clientes':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <BarChart2 className="h-5 w-5 mr-2 text-blue-600" />
-                Clientes con Mayor Frecuencia de Compra
-              </h3>
-              <div className="h-64 bg-gray-50 rounded flex items-center justify-center">
-                <p className="text-gray-500">Gráfico de barras de clientes</p>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compras</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Gastado (Bs.)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Compra</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {reportData.clientes.map((item, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.nombre}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.compras}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
-                        {item.total.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(item.ultimaCompra).toLocaleDateString('es-ES')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
+  // Formatear fecha
+  const formatDate = (dateString) => {
+    const options = { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    return new Date(dateString).toLocaleDateString('es-ES', options);
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Componentes reutilizables */}
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <TopBar />
       <NavBar />
 
-      {/* Contenido principal */}
-      <main className="flex-grow max-w-7xl mx-auto px-4 py-6 w-full">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
-            <FileText className="h-6 w-6 mr-2 text-blue-600" />
-            Reportes del Sistema
-          </h1>
-          <p className="text-gray-600">Genera y visualiza reportes de tu farmacia</p>
+      <main className="flex-grow py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Encabezado */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center">
+              <BarChart2 className="h-8 w-8 mr-3 text-blue-600" />
+              Reportes del Sistema
+            </h1>
+            <p className="mt-2 text-gray-600">
+              Visualiza y descarga los reportes generados por el sistema
+            </p>
+          </div>
+
+          {/* Selector visual de tipos */}
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h3 className="text-sm font-medium text-gray-500 mb-3">Selecciona el tipo de reporte</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              {REPORT_TYPES.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setSelectedType(type.id)}
+                  className={`flex flex-col items-center p-3 rounded-lg border transition-all ${
+                    selectedType === type.id 
+                      ? `bg-${type.color}-100 border-${type.color}-300 shadow-inner` 
+                      : 'bg-white border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className={`p-2 rounded-full mb-2 text-${type.color}-600`}>
+                    {type.icon}
+                  </div>
+                  <span className="text-sm font-medium">{type.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Filtros y controles */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="relative flex-grow">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FileText className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Buscar reportes por nombre..."
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:ring-blue-500 focus:border-blue-500"
+                  value={filters.searchTerm}
+                  onChange={(e) => handleFilterChange({ target: { name: 'searchTerm', value: e.target.value } })}
+                />
+              </div>
+
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md text-gray-700"
+                >
+                  <Filter className="h-5 w-5 mr-2" />
+                  Filtros
+                  {showFilters ? <ChevronUp className="h-5 w-5 ml-1" /> : <ChevronDown className="h-5 w-5 ml-1" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Filtros avanzados */}
+            {showFilters && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                  <select
+                    name="category"
+                    value={filters.category}
+                    onChange={handleFilterChange}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    <option value="Todos">Todas las categorías</option>
+                    <option value="Detallado">Detallado</option>
+                    <option value="Resumen">Resumen</option>
+                    <option value="Gráfico">Gráfico</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Formato</label>
+                  <select
+                    name="format"
+                    value={filters.format}
+                    onChange={handleFilterChange}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    <option value="Todos">Todos los formatos</option>
+                    <option value="PDF">PDF</option>
+                    <option value="Excel">Excel</option>
+                    <option value="CSV">CSV</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Desde</label>
+                    <input
+                      type="date"
+                      name="dateFrom"
+                      value={filters.dateFrom}
+                      onChange={handleFilterChange}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Hasta</label>
+                    <input
+                      type="date"
+                      name="dateTo"
+                      value={filters.dateTo}
+                      onChange={handleFilterChange}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="md:col-span-3 flex justify-end space-x-3">
+                  <FarmaButton 
+                    type="secondary" 
+                    onClick={clearFilters}
+                    className="w-full md:w-auto"
+                  >
+                    Limpiar filtros
+                  </FarmaButton>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Resultados */}
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-medium">
+                {REPORT_TYPES.find(t => t.id === selectedType)?.name || 'Todos'} los reportes
+                <span className="text-sm text-gray-500 ml-2">
+                  ({filteredReports.length} resultados)
+                </span>
+              </h3>
+              <div className="flex space-x-2">
+                <FarmaButton type="outline" size="sm">
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir
+                </FarmaButton>
+                <FarmaButton type="primary" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </FarmaButton>
+              </div>
+            </div>
+
+            {/* Vista de lista */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredReports.map((report) => (
+                    <tr key={report.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {report.name}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">{report.format} • {report.size}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${getColorClass(report.type)}-100 text-${getColorClass(report.type)}-800`}>
+                          {REPORT_TYPES.find(t => t.id === report.type)?.name}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {report.category}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(report.date)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-2">
+                          <FarmaButton 
+                            type="outline" 
+                            size="xs"
+                            onClick={() => setSelectedReport(report)}
+                          >
+                            <FileText className="h-3 w-3 mr-1" />
+                            Detalles
+                          </FarmaButton>
+                          <FarmaButton 
+                            type="primary" 
+                            size="xs"
+                            className="flex items-center"
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            Descargar
+                          </FarmaButton>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredReports.length === 0 && (
+              <div className="p-8 text-center">
+                <FileText className="h-12 w-12 mx-auto text-gray-400" />
+                <h3 className="mt-2 text-lg font-medium text-gray-900">No se encontraron reportes</h3>
+                <p className="mt-1 text-gray-500">
+                  No hay reportes que coincidan con los filtros seleccionados
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-        
-        {/* Selector de reporte y fechas */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Reporte</label>
-              <select
-                value={reportType}
-                onChange={(e) => setReportType(e.target.value)}
-                className="w-full border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+      </main>
+
+      <Footer />
+
+      {/* Modal de detalles del reporte */}
+      {selectedReport && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg border border-gray-200 w-full max-w-2xl">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">
+                Detalles del Reporte
+              </h3>
+              <button 
+                onClick={() => setSelectedReport(null)}
+                className="text-gray-400 hover:text-gray-500"
               >
-                <option value="ventas">
-                  <div className="flex items-center">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Ventas
-                  </div>
-                </option>
-                <option value="inventario">
-                  <div className="flex items-center">
-                    <Package className="h-4 w-4 mr-2" />
-                    Inventario
-                  </div>
-                </option>
-                <option value="clientes">
-                  <div className="flex items-center">
-                    <User className="h-4 w-4 mr-2" />
-                    Clientes
-                  </div>
-                </option>
-              </select>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
-              <input
-                type="date"
-                name="start"
-                value={dateRange.start}
-                onChange={handleDateChange}
-                className="w-full border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+            
+            <div className="px-6 py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Nombre</h4>
+                  <p className="mt-1 text-sm text-gray-900">{selectedReport.name}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Tipo</h4>
+                  <p className="mt-1">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${getColorClass(selectedReport.type)}-100 text-${getColorClass(selectedReport.type)}-800`}>
+                      {REPORT_TYPES.find(t => t.id === selectedReport.type)?.name}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Categoría</h4>
+                  <p className="mt-1 text-sm text-gray-900">{selectedReport.category}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Formato</h4>
+                  <p className="mt-1 text-sm text-gray-900">{selectedReport.format}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Periodo</h4>
+                  <p className="mt-1 text-sm text-gray-900">{selectedReport.period}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Tamaño</h4>
+                  <p className="mt-1 text-sm text-gray-900">{selectedReport.size}</p>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Fecha de generación</h4>
+                <p className="mt-1 text-sm text-gray-900">
+                  {formatDate(selectedReport.date)}
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
-              <input
-                type="date"
-                name="end"
-                value={dateRange.end}
-                onChange={handleDateChange}
-                className="w-full border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+            
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <FarmaButton 
+                type="outline" 
+                onClick={() => setSelectedReport(null)}
+              >
+                Cerrar
+              </FarmaButton>
+              <FarmaButton 
+                type="primary" 
+                className="flex items-center"
+              >
+                <Download className="h-5 w-5 mr-2" />
+                Descargar Reporte
+              </FarmaButton>
             </div>
           </div>
         </div>
-
-        {/* Acciones de reporte */}
-        <div className="flex justify-end space-x-3 mb-6">
-          <FarmaButton 
-            type="outline" 
-            onClick={handlePrintReport}
-            className="flex items-center"
-          >
-            <Printer className="h-5 w-5 mr-2" />
-            Imprimir
-          </FarmaButton>
-          <FarmaButton 
-            type="primary" 
-            onClick={handleExportReport}
-            className="flex items-center"
-          >
-            <Download className="h-5 w-5 mr-2" />
-            Exportar PDF
-          </FarmaButton>
-        </div>
-
-        {/* Contenido del reporte */}
-        {renderReportContent()}
-      </main>
-
-      {/* Footer */}
-      <Footer />
+      )}
     </div>
   );
 }
